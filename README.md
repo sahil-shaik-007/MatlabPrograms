@@ -4,7 +4,7 @@
 This repository contains MATLAB scripts for working with Simulink models:
 
 1. **find_reference_models.m** - Recursively finds all reference models in a Simulink model hierarchy
-2. **connect_unconnected_blocks.m** - Connects unconnected blocks to ground or terminator blocks with comprehensive subsystem support
+2. **connect_unconnected_blocks.m** - Connects unconnected blocks to ground or terminator blocks with comprehensive subsystem and special block support
 
 ## Scripts
 
@@ -31,10 +31,11 @@ Recursively finds all reference models in a Simulink model hierarchy. It handles
 
 ### 2. Enhanced Unconnected Block Connector (connect_unconnected_blocks.m)
 
-Connects unconnected blocks in a Simulink model to either ground blocks (for input ports) or terminator blocks (for output ports). This enhanced version handles all types of subsystems and nested structures comprehensively.
+Connects unconnected blocks in a Simulink model to either ground blocks (for input ports) or terminator blocks (for output ports). This enhanced version handles all types of subsystems, nested structures, and special blocks comprehensively.
 
 #### Features
 - **Comprehensive Subsystem Support**: Handles regular, reference, variant, and model reference subsystems
+- **Special Block Handling**: Properly handles Inport, Outport, From, and Goto blocks
 - **Recursive Processing**: Processes deeply nested subsystem hierarchies
 - **Variant Subsystem Support**: Activates and processes all variant choices
 - **Reference Subsystem Handling**: Automatically loads and processes reference blocks
@@ -47,12 +48,21 @@ Connects unconnected blocks in a Simulink model to either ground blocks (for inp
 - **Comprehensive Reporting**: Provides detailed statistics and progress tracking
 - **Robust Error Handling**: Continues processing even if individual subsystems fail
 
-#### Supported Subsystem Types
+#### Supported Block Types
 - **Regular Subsystems**: Standard nested subsystems
 - **Reference Subsystems**: Library blocks and reference subsystems
 - **Variant Subsystems**: Subsystems with multiple variant choices
 - **Model References**: Referenced models (.slx/.mdl files)
+- **Inport Blocks**: Connects unconnected Inport blocks to terminator blocks
+- **Outport Blocks**: Connects unconnected Outport blocks to ground blocks
+- **From Blocks**: Connects unconnected From blocks to terminator blocks
+- **Goto Blocks**: Connects unconnected Goto blocks to ground blocks
+- **Regular Blocks**: Standard Simulink blocks with input/output ports
 - **Nested Structures**: Subsystems within subsystems at any depth
+
+#### Connection Logic
+- **Input Ports** (including Goto blocks, Outport blocks): Connected to **Ground blocks**
+- **Output Ports** (including Inport blocks, From blocks): Connected to **Terminator blocks**
 
 #### Usage
 1. Open MATLAB
@@ -75,37 +85,49 @@ Loading model: complex_model
 Processing model and all subsystems...
 =====================================
 Processing: complex_model
-  Found 8 blocks in: complex_model
+  Found 12 blocks in: complex_model
     Found regular subsystem: Controller_Subsystem
 Processing: complex_model/Controller_Subsystem
-  Found 5 blocks in: complex_model/Controller_Subsystem
+  Found 8 blocks in: complex_model/Controller_Subsystem
+    Found Inport block: Input_Signal
+      Unconnected Inport found: complex_model/Controller_Subsystem/Input_Signal
+        -> Connected to terminator block
+    Found Outport block: Output_Signal
+      Unconnected Outport found: complex_model/Controller_Subsystem/Output_Signal
+        -> Connected to ground block
+    Found From block: Data_From
+      Unconnected From block found: complex_model/Controller_Subsystem/Data_From
+        -> Connected to terminator block
+    Found Goto block: Data_Goto
+      Unconnected Goto block found: complex_model/Controller_Subsystem/Data_Goto
+        -> Connected to ground block
     Found reference subsystem: PID_Controller
       Processing reference block: lib_controllers/PID_Controller
         Loaded reference block: PID_Controller
 Processing: PID_Controller
-  Found 3 blocks in: PID_Controller
-    Unconnected input port found: PID_Controller/Gain (port 1)
-      -> Connected to ground block
+  Found 5 blocks in: PID_Controller
     Found variant subsystem: Filter_Options
       Processing variant choices for: Filter_Options
         Activating variant: LowPass
 Processing: PID_Controller/Filter_Options
-  Found 2 blocks in: PID_Controller/Filter_Options
+  Found 3 blocks in: PID_Controller/Filter_Options
         Activating variant: HighPass
 Processing: PID_Controller/Filter_Options
-  Found 2 blocks in: PID_Controller/Filter_Options
+  Found 3 blocks in: PID_Controller/Filter_Options
     Found model reference: Sensor_Model
       Processing referenced model: Sensor_Model
         Loaded referenced model: Sensor_Model
 Processing: Sensor_Model
-  Found 4 blocks in: Sensor_Model
-    Unconnected output port found: Sensor_Model/Output (port 1)
+  Found 6 blocks in: Sensor_Model
+    Unconnected input port found: Sensor_Model/Gain (port 1)
+      -> Connected to ground block
+    Unconnected output port found: Sensor_Model/Sum (port 1)
       -> Connected to terminator block
 
 === RESULTS ===
-Unconnected input ports found: 1
-Unconnected output ports found: 1
-Total connections made: 2
+Unconnected input ports found: 3
+Unconnected output ports found: 3
+Total connections made: 6
 
 Model has been modified. Consider saving the model.
 Use: save_system('complex_model')
@@ -116,6 +138,7 @@ Results saved to workspace variables: unconnectedInputs, unconnectedOutputs, con
 #### Advanced Capabilities
 - **Deep Nesting**: Handles subsystems within subsystems at any depth
 - **Mixed Types**: Processes models with multiple subsystem types
+- **Special Block Support**: Properly handles Inport, Outport, From, and Goto blocks
 - **Automatic Loading**: Loads missing reference blocks and models automatically
 - **Variant Processing**: Processes all variant choices in variant subsystems
 - **Circular Reference Prevention**: Avoids infinite loops in complex hierarchies
@@ -135,6 +158,7 @@ Results saved to workspace variables: unconnectedInputs, unconnectedOutputs, con
 - The enhanced connector handles complex model hierarchies including reference subsystems containing other reference subsystems
 - Variant subsystems are processed by activating each variant choice individually
 - Model references are automatically loaded and processed recursively
+- Special blocks (Inport, Outport, From, Goto) are handled with appropriate connection logic
 
 ## Use Cases
 - **Model Validation**: Ensure all ports are properly connected before simulation
@@ -143,3 +167,5 @@ Results saved to workspace variables: unconnectedInputs, unconnectedOutputs, con
 - **Hierarchical Processing**: Handle deeply nested subsystem structures
 - **Variant System Management**: Process all variants in variant subsystems
 - **Library Integration**: Work with Simulink library blocks and reference subsystems
+- **Signal Flow Management**: Handle unconnected From/Goto tag pairs
+- **Interface Management**: Connect unconnected Inport/Outport blocks

@@ -1,8 +1,8 @@
-﻿function connect_unconnected_blocks()
+function connect_unconnected_blocks()
     % CONNECT_UNCONNECTED_BLOCKS - Connects unconnected blocks to ground or terminator blocks
     % This script finds all unconnected ports in a Simulink model and connects them
     % to either ground blocks (for input ports) or terminator blocks (for output ports)
-    % Handles reference subsystems, variant subsystems, and nested subsystems recursively
+    % Handles reference subsystems, variant subsystems, nested subsystems, and special blocks
     
     fprintf('=== Simulink Unconnected Block Connector ===\n\n');
     
@@ -124,6 +124,22 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModel
                 % Model reference block
                 fprintf('    Found model reference: %s\n', blockName);
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModelReference(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
+            elseif strcmp(blockType, 'Inport')
+                % Inport block - connect to terminator if unconnected
+                fprintf('    Found Inport block: %s\n', blockName);
+                [unconnectedInputs, unconnectedOutputs, connectionsMade] = processInportBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
+            elseif strcmp(blockType, 'Outport')
+                % Outport block - connect to ground if unconnected
+                fprintf('    Found Outport block: %s\n', blockName);
+                [unconnectedInputs, unconnectedOutputs, connectionsMade] = processOutportBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
+            elseif strcmp(blockType, 'From')
+                % From block - connect to terminator if unconnected
+                fprintf('    Found From block: %s\n', blockName);
+                [unconnectedInputs, unconnectedOutputs, connectionsMade] = processFromBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
+            elseif strcmp(blockType, 'Goto')
+                % Goto block - connect to ground if unconnected
+                fprintf('    Found Goto block: %s\n', blockName);
+                [unconnectedInputs, unconnectedOutputs, connectionsMade] = processGotoBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
             else
                 % Regular block - check for unconnected ports
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processRegularBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
@@ -132,6 +148,122 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModel
         
     catch ME
         fprintf('  Error processing %s: %s\n', modelPath, ME.message);
+    end
+end
+
+function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processInportBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade)
+    % Process Inport blocks - connect to terminator if unconnected
+    
+    try
+        % Check if Inport has any connections
+        inputPorts = get_param(blockPath, 'PortHandles');
+        if ~isempty(inputPorts.Outport)
+            portHandle = inputPorts.Outport(1);
+            lineHandle = get_param(portHandle, 'Line');
+            
+            if lineHandle == -1  % No line connected
+                unconnectedOutputs = unconnectedOutputs + 1;
+                fprintf('      Unconnected Inport found: %s\n', blockPath);
+                
+                % Connect to terminator block
+                if connectToTerminator(blockPath, 1)
+                    connectionsMade = connectionsMade + 1;
+                    fprintf('        -> Connected to terminator block\n');
+                else
+                    fprintf('        -> Failed to connect to terminator block\n');
+                end
+            end
+        end
+        
+    catch ME
+        fprintf('      Error processing Inport block %s: %s\n', blockPath, ME.message);
+    end
+end
+
+function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processOutportBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade)
+    % Process Outport blocks - connect to ground if unconnected
+    
+    try
+        % Check if Outport has any connections
+        inputPorts = get_param(blockPath, 'PortHandles');
+        if ~isempty(inputPorts.Inport)
+            portHandle = inputPorts.Inport(1);
+            lineHandle = get_param(portHandle, 'Line');
+            
+            if lineHandle == -1  % No line connected
+                unconnectedInputs = unconnectedInputs + 1;
+                fprintf('      Unconnected Outport found: %s\n', blockPath);
+                
+                % Connect to ground block
+                if connectToGround(blockPath, 1)
+                    connectionsMade = connectionsMade + 1;
+                    fprintf('        -> Connected to ground block\n');
+                else
+                    fprintf('        -> Failed to connect to ground block\n');
+                end
+            end
+        end
+        
+    catch ME
+        fprintf('      Error processing Outport block %s: %s\n', blockPath, ME.message);
+    end
+end
+
+function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processFromBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade)
+    % Process From blocks - connect to terminator if unconnected
+    
+    try
+        % Check if From block has any connections
+        inputPorts = get_param(blockPath, 'PortHandles');
+        if ~isempty(inputPorts.Outport)
+            portHandle = inputPorts.Outport(1);
+            lineHandle = get_param(portHandle, 'Line');
+            
+            if lineHandle == -1  % No line connected
+                unconnectedOutputs = unconnectedOutputs + 1;
+                fprintf('      Unconnected From block found: %s\n', blockPath);
+                
+                % Connect to terminator block
+                if connectToTerminator(blockPath, 1)
+                    connectionsMade = connectionsMade + 1;
+                    fprintf('        -> Connected to terminator block\n');
+                else
+                    fprintf('        -> Failed to connect to terminator block\n');
+                end
+            end
+        end
+        
+    catch ME
+        fprintf('      Error processing From block %s: %s\n', blockPath, ME.message);
+    end
+end
+
+function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processGotoBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade)
+    % Process Goto blocks - connect to ground if unconnected
+    
+    try
+        % Check if Goto block has any connections
+        inputPorts = get_param(blockPath, 'PortHandles');
+        if ~isempty(inputPorts.Inport)
+            portHandle = inputPorts.Inport(1);
+            lineHandle = get_param(portHandle, 'Line');
+            
+            if lineHandle == -1  % No line connected
+                unconnectedInputs = unconnectedInputs + 1;
+                fprintf('      Unconnected Goto block found: %s\n', blockPath);
+                
+                % Connect to ground block
+                if connectToGround(blockPath, 1)
+                    connectionsMade = connectionsMade + 1;
+                    fprintf('        -> Connected to ground block\n');
+                else
+                    fprintf('        -> Failed to connect to ground block\n');
+                end
+            end
+        end
+        
+    catch ME
+        fprintf('      Error processing Goto block %s: %s\n', blockPath, ME.message);
     end
 end
 
