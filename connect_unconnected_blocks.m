@@ -1,4 +1,4 @@
-function connect_unconnected_blocks()
+﻿function connect_unconnected_blocks()
     % CONNECT_UNCONNECTED_BLOCKS - Connects unconnected blocks to ground or terminator blocks
     % This script finds all unconnected ports in a Simulink model and connects them
     % to either ground blocks (for input ports) or terminator blocks (for output ports)
@@ -34,7 +34,7 @@ function connect_unconnected_blocks()
         processedSubsystems = {};
         
         % Process the main model and all subsystems recursively
-        fprintf('Processing model and all subsystems...\n');
+        fprintf('Searching for unconnected blocks...\n');
         fprintf('=====================================\n');
         
         [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModelRecursively(modelName, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
@@ -85,12 +85,8 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModel
     processedSubsystems{end+1} = modelPath;
     
     try
-        fprintf('Processing: %s\n', modelPath);
-        
         % Find all blocks in the current model/subsystem
         allBlocks = find_system(modelPath, 'Type', 'Block');
-        
-        fprintf('  Found %d blocks in: %s\n', length(allBlocks), modelPath);
         
         % Process each block
         for i = 1:length(allBlocks)
@@ -108,37 +104,29 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModel
             if strcmp(blockType, 'SubSystem')
                 % Check if it is a reference subsystem
                 if strcmp(get_param(blockPath, 'Variant'), 'on')
-                    fprintf('    Found variant subsystem: %s\n', blockName);
                     % Process variant subsystem
                     [unconnectedInputs, unconnectedOutputs, connectionsMade] = processVariantSubsystem(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
                 elseif strcmp(get_param(blockPath, 'ReferenceBlock'), '')
                     % Regular subsystem - process recursively
-                    fprintf('    Found regular subsystem: %s\n', blockName);
                     [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModelRecursively(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
                 else
                     % Reference subsystem
-                    fprintf('    Found reference subsystem: %s\n', blockName);
                     [unconnectedInputs, unconnectedOutputs, connectionsMade] = processReferenceSubsystem(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
                 end
             elseif strcmp(blockType, 'ModelReference')
                 % Model reference block
-                fprintf('    Found model reference: %s\n', blockName);
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModelReference(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
             elseif strcmp(blockType, 'Inport')
                 % Inport block - connect to terminator if unconnected
-                fprintf('    Found Inport block: %s\n', blockName);
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processInportBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
             elseif strcmp(blockType, 'Outport')
                 % Outport block - connect to ground if unconnected
-                fprintf('    Found Outport block: %s\n', blockName);
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processOutportBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
             elseif strcmp(blockType, 'From')
                 % From block - connect to terminator if unconnected
-                fprintf('    Found From block: %s\n', blockName);
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processFromBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
             elseif strcmp(blockType, 'Goto')
                 % Goto block - connect to ground if unconnected
-                fprintf('    Found Goto block: %s\n', blockName);
                 [unconnectedInputs, unconnectedOutputs, connectionsMade] = processGotoBlock(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade);
             else
                 % Regular block - check for unconnected ports
@@ -163,20 +151,20 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processInpor
             
             if lineHandle == -1  % No line connected
                 unconnectedOutputs = unconnectedOutputs + 1;
-                fprintf('      Unconnected Inport found: %s\n', blockPath);
+                fprintf('Unconnected Inport found: %s\n', blockPath);
                 
                 % Connect to terminator block
                 if connectToTerminator(blockPath, 1)
                     connectionsMade = connectionsMade + 1;
-                    fprintf('        -> Connected to terminator block\n');
+                    fprintf('  -> Connected to terminator block\n');
                 else
-                    fprintf('        -> Failed to connect to terminator block\n');
+                    fprintf('  -> Failed to connect to terminator block\n');
                 end
             end
         end
         
     catch ME
-        fprintf('      Error processing Inport block %s: %s\n', blockPath, ME.message);
+        fprintf('  Error processing Inport block %s: %s\n', blockPath, ME.message);
     end
 end
 
@@ -192,20 +180,20 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processOutpo
             
             if lineHandle == -1  % No line connected
                 unconnectedInputs = unconnectedInputs + 1;
-                fprintf('      Unconnected Outport found: %s\n', blockPath);
+                fprintf('Unconnected Outport found: %s\n', blockPath);
                 
                 % Connect to ground block
                 if connectToGround(blockPath, 1)
                     connectionsMade = connectionsMade + 1;
-                    fprintf('        -> Connected to ground block\n');
+                    fprintf('  -> Connected to ground block\n');
                 else
-                    fprintf('        -> Failed to connect to ground block\n');
+                    fprintf('  -> Failed to connect to ground block\n');
                 end
             end
         end
         
     catch ME
-        fprintf('      Error processing Outport block %s: %s\n', blockPath, ME.message);
+        fprintf('  Error processing Outport block %s: %s\n', blockPath, ME.message);
     end
 end
 
@@ -221,20 +209,20 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processFromB
             
             if lineHandle == -1  % No line connected
                 unconnectedOutputs = unconnectedOutputs + 1;
-                fprintf('      Unconnected From block found: %s\n', blockPath);
+                fprintf('Unconnected From block found: %s\n', blockPath);
                 
                 % Connect to terminator block
                 if connectToTerminator(blockPath, 1)
                     connectionsMade = connectionsMade + 1;
-                    fprintf('        -> Connected to terminator block\n');
+                    fprintf('  -> Connected to terminator block\n');
                 else
-                    fprintf('        -> Failed to connect to terminator block\n');
+                    fprintf('  -> Failed to connect to terminator block\n');
                 end
             end
         end
         
     catch ME
-        fprintf('      Error processing From block %s: %s\n', blockPath, ME.message);
+        fprintf('  Error processing From block %s: %s\n', blockPath, ME.message);
     end
 end
 
@@ -250,20 +238,20 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processGotoB
             
             if lineHandle == -1  % No line connected
                 unconnectedInputs = unconnectedInputs + 1;
-                fprintf('      Unconnected Goto block found: %s\n', blockPath);
+                fprintf('Unconnected Goto block found: %s\n', blockPath);
                 
                 % Connect to ground block
                 if connectToGround(blockPath, 1)
                     connectionsMade = connectionsMade + 1;
-                    fprintf('        -> Connected to ground block\n');
+                    fprintf('  -> Connected to ground block\n');
                 else
-                    fprintf('        -> Failed to connect to ground block\n');
+                    fprintf('  -> Failed to connect to ground block\n');
                 end
             end
         end
         
     catch ME
-        fprintf('      Error processing Goto block %s: %s\n', blockPath, ME.message);
+        fprintf('  Error processing Goto block %s: %s\n', blockPath, ME.message);
     end
 end
 
@@ -275,8 +263,6 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processVaria
         variantChoices = get_param(blockPath, 'VariantChoices');
         
         if ~isempty(variantChoices)
-            fprintf('      Processing variant choices for: %s\n', get_param(blockPath, 'Name'));
-            
             % Process each variant
             for i = 1:length(variantChoices)
                 try
@@ -284,11 +270,10 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processVaria
                     set_param(blockPath, 'Variant', variantChoices{i});
                     
                     % Process the activated variant
-                    fprintf('        Activating variant: %s\n', variantChoices{i});
                     [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModelRecursively(blockPath, unconnectedInputs, unconnectedOutputs, connectionsMade, processedSubsystems);
                     
                 catch ME
-                    fprintf('        Error processing variant %s: %s\n', variantChoices{i}, ME.message);
+                    fprintf('  Error processing variant %s: %s\n', variantChoices{i}, ME.message);
                 end
             end
         else
@@ -297,7 +282,7 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processVaria
         end
         
     catch ME
-        fprintf('      Error processing variant subsystem: %s\n', ME.message);
+        fprintf('  Error processing variant subsystem: %s\n', ME.message);
     end
 end
 
@@ -309,16 +294,13 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processRefer
         refBlock = get_param(blockPath, 'ReferenceBlock');
         
         if ~isempty(refBlock)
-            fprintf('      Processing reference block: %s\n', refBlock);
-            
             % Load the reference block if not already loaded
             [refPath, refName] = fileparts(refBlock);
             if ~bdIsLoaded(refName)
                 try
                     load_system(refBlock);
-                    fprintf('        Loaded reference block: %s\n', refName);
                 catch ME
-                    fprintf('        Could not load reference block %s: %s\n', refName, ME.message);
+                    fprintf('  Could not load reference block %s: %s\n', refName, ME.message);
                     return;
                 end
             end
@@ -328,7 +310,7 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processRefer
         end
         
     catch ME
-        fprintf('      Error processing reference subsystem: %s\n', ME.message);
+        fprintf('  Error processing reference subsystem: %s\n', ME.message);
     end
 end
 
@@ -340,15 +322,12 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModel
         refModelName = get_param(blockPath, 'ModelName');
         
         if ~isempty(refModelName) && ~strcmp(refModelName, 'ModelName')
-            fprintf('      Processing referenced model: %s\n', refModelName);
-            
             % Load the referenced model if not already loaded
             if ~bdIsLoaded(refModelName)
                 try
                     load_system(refModelName);
-                    fprintf('        Loaded referenced model: %s\n', refModelName);
                 catch ME
-                    fprintf('        Could not load referenced model %s: %s\n', refModelName, ME.message);
+                    fprintf('  Could not load referenced model %s: %s\n', refModelName, ME.message);
                     return;
                 end
             end
@@ -358,7 +337,7 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processModel
         end
         
     catch ME
-        fprintf('      Error processing model reference: %s\n', ME.message);
+        fprintf('  Error processing model reference: %s\n', ME.message);
     end
 end
 
@@ -375,14 +354,14 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processRegul
                 
                 if lineHandle == -1  % No line connected
                     unconnectedInputs = unconnectedInputs + 1;
-                    fprintf('    Unconnected input port found: %s (port %d)\n', blockPath, j);
+                    fprintf('Unconnected input port found: %s (port %d)\n', blockPath, j);
                     
                     % Connect to ground block
                     if connectToGround(blockPath, j)
                         connectionsMade = connectionsMade + 1;
-                        fprintf('      -> Connected to ground block\n');
+                        fprintf('  -> Connected to ground block\n');
                     else
-                        fprintf('      -> Failed to connect to ground block\n');
+                        fprintf('  -> Failed to connect to ground block\n');
                     end
                 end
             end
@@ -396,21 +375,21 @@ function [unconnectedInputs, unconnectedOutputs, connectionsMade] = processRegul
                 
                 if lineHandle == -1  % No line connected
                     unconnectedOutputs = unconnectedOutputs + 1;
-                    fprintf('    Unconnected output port found: %s (port %d)\n', blockPath, j);
+                    fprintf('Unconnected output port found: %s (port %d)\n', blockPath, j);
                     
                     % Connect to terminator block
                     if connectToTerminator(blockPath, j)
                         connectionsMade = connectionsMade + 1;
-                        fprintf('      -> Connected to terminator block\n');
+                        fprintf('  -> Connected to terminator block\n');
                     else
-                        fprintf('      -> Failed to connect to terminator block\n');
+                        fprintf('  -> Failed to connect to terminator block\n');
                     end
                 end
             end
         end
         
     catch ME
-        fprintf('    Error processing block %s: %s\n', blockPath, ME.message);
+        fprintf('  Error processing block %s: %s\n', blockPath, ME.message);
     end
 end
 
@@ -445,7 +424,7 @@ function success = connectToGround(blockPath, portNumber)
         success = true;
         
     catch ME
-        fprintf('        Error connecting to ground: %s\n', ME.message);
+        fprintf('    Error connecting to ground: %s\n', ME.message);
     end
 end
 
@@ -480,6 +459,6 @@ function success = connectToTerminator(blockPath, portNumber)
         success = true;
         
     catch ME
-        fprintf('        Error connecting to terminator: %s\n', ME.message);
+        fprintf('    Error connecting to terminator: %s\n', ME.message);
     end
 end
